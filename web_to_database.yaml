@@ -1,0 +1,21 @@
+- name: web-to-db
+  from: trust
+  to: untrust
+  src: any
+  dst: 10.0.1.0/24
+  app:
+    - web-browsing
+  svc:
+    - service-https
+  action: allow
+
+- name: db-to-web
+  from: untrust
+  to: trust
+  src: any
+  dst: 10.0.2.0/24
+  app:
+    - database
+  svc:
+    - service-mysql
+  action: allow

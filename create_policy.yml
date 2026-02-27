@@ -1,0 +1,41 @@
+---
+- hosts: all
+  connection: local
+  gather_facts: true
+  name: Example Policy Creation Playbook
+
+  vars:
+    provider:
+      ip_address: "{{ ansible_host }}"
+      username: "{{ lookup('env', 'ANSIBLE_NET_USERNAME') }}"
+      password: "{{ lookup('env', 'ANSIBLE_NET_PASSWORD') }}"
+    policy_creation_policy_files: []
+    default_new_policy_tag: AUTOMATED
+
+  tasks:
+
+    # In this example, when running under AAP we cannot load tasks directly from the filesystem, so in production
+    #   you would have to pull your policy files using `fetch` or similar.
+    # Because this is an example only, we just put all our policy files right here.
+    - name: Match Web Server to Database Tier
+      ansible.builtin.set_fact:
+        policy_match: true # Set the fact that we did match a policy
+        source_address_group: PRESET_WEB_TO_DATABASE_SOURCE # In this case, the policy preset is an address_group type
+        destination_address_group: PRESET_WEB_TO_DATABASE_DESTINATION # Destination addr group
+        outer_application_group: PRESET_WEB_TO_DATABASE # If an application is passed, we should also include it in the policy.
+        device_group: Lab # Finally, we set the device group!
+      when:
+        - policy_creation_source_ip is defined
+        - policy_creation_destination_ip is defined
+        - "policy_creation_source_ip.startswith('10.10.199')"
+        - "policy_creation_destination_ip.startswith('10.10.200')"
+
+    - name: Include a role dynamically
+      ansible.builtin.include_role:
+        name: paloaltonetworks.panos_policy_automation.policy_creation
+      vars:
+        policy_creation_source_address_group: "{{ source_address_group }}"
+        policy_creation_destination_address_group: "{{ destination_address_group }}"
+        policy_creation_policy_match: "{{ policy_match }}"
+        application_group: "{{ outer_application_group }}"
+        policy_creation_device_group: "{{ device_group }}"
