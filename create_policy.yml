@@ -33,7 +33,7 @@
     # ------------------------------------------------------------
     - name: Define policy inputs
       ansible.builtin.set_fact:
-        policy_match: true
+        policy_match: false
 
         source_address_group: >-
           {{ 'PRESET_WEB_TO_DATABASE_SOURCE'
