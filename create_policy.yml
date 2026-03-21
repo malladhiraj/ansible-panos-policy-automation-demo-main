@@ -17,7 +17,7 @@
     # In this example, when running under AAP we cannot load tasks directly from the filesystem, so in production
     #   you would have to pull your policy files using `fetch` or similar.
     # Because this is an example only, we just put all our policy files right here.
-    - name: 2Match Web Server to Database Tier
+    - name: Match Web Server to Database Tier
       ansible.builtin.set_fact:
         policy_match: true
         source_address_group: "{{ 'PRESET_WEB_TO_DATABASE_SOURCE' if (policy_creation_source_ip is defined and policy_creation_destination_ip is defined and policy_creation_source_ip.startswith('10.10.199') and policy_creation_destination_ip.startswith('10.10.200')) else 'DEFAULT_SOURCE' }}"
@@ -25,78 +25,14 @@
         outer_application_group: "{{ 'PRESET_WEB_TO_DATABASE' if (policy_creation_source_ip is defined and policy_creation_destination_ip is defined and policy_creation_source_ip.startswith('10.10.199') and policy_creation_destination_ip.startswith('10.10.200')) else 'DEFAULT_APPLICATION' }}"
         device_group: "{{ 'Lab' if (policy_creation_source_ip is defined and policy_creation_destination_ip is defined and policy_creation_source_ip.startswith('10.10.199') and policy_creation_destination_ip.startswith('10.10.200')) else 'DEFAULT_DEVICE_GROUP' }}"
 
-    - name: Check if source address group exists
-      paloaltonetworks.panos.panos_object_facts:
-        provider: "{{ provider }}"
-        object_type: address-group
-        name: "{{ source_address_group }}"
-        device_group: "{{ device_group }}"
-      register: source_ag_facts
-      when: source_address_group != ""
-
-    - name: Create source address group if not exists
-      paloaltonetworks.panos.panos_object:
-        provider: "{{ provider }}"
-        state: present
-        addressgroup: "{{ source_address_group }}"
-        static_value: "{{ [policy_creation_source_ip] if policy_creation_source_ip is defined else [] }}"
-        device_group: "{{ device_group }}"
-      when: source_address_group != "" and source_ag_facts.objects | length == 0
-
-    - name: Check if destination address group exists
-      paloaltonetworks.panos.panos_object_facts:
-        provider: "{{ provider }}"
-        object_type: address-group
-        name: "{{ destination_address_group }}"
-        device_group: "{{ device_group }}"
-      register: dest_ag_facts
-      when: destination_address_group != ""
-
-    - name: Create destination address group if not exists
-      paloaltonetworks.panos.panos_object:
-        provider: "{{ provider }}"
-        state: present
-        addressgroup: "{{ destination_address_group }}"
-        static_value: "{{ [policy_creation_destination_ip] if policy_creation_destination_ip is defined else [] }}"
-        device_group: "{{ device_group }}"
-      when: destination_address_group != "" and dest_ag_facts.objects | length == 0
-
-    - name: Check if application group exists
-      paloaltonetworks.panos.panos_object_facts:
-        provider: "{{ provider }}"
-        object_type: application-group
-        name: "{{ outer_application_group }}"
-        device_group: "{{ device_group }}"
-      register: app_group_facts
-      when: outer_application_group != ""
-
-    - name: Create application group if not exists
-      paloaltonetworks.panos.panos_application_group:
-        provider: "{{ provider }}"
-        state: present
-        name: "{{ outer_application_group }}"
-        applications: ['web-browsing', 'database']
-        device_group: "{{ device_group }}"
-      when: outer_application_group != "" and app_group_facts.objects | length == 0
-
-    - name: Check if security rule exists
-      paloaltonetworks.panos.panos_security_rule_facts:
-        provider: "{{ provider }}"
-        device_group: "{{ device_group }}"
-        names: ['web-to-database-policy']
-      register: rule_facts
-
-    - name: Create or update security rule
-      paloaltonetworks.panos.panos_security_rule:
-        provider: "{{ provider }}"
-        state: present
-        device_group: "{{ device_group }}"
-        rule_name: 'web-to-database-policy'
-        source_zone: ['trust']
-        destination_zone: ['untrust']
-        source_address: ['{{ source_address_group }}']
-        destination_address: ['{{ destination_address_group }}']
-        application: ['{{ outer_application_group }}']
-        service: ['application-default']
+    - name: Include a role dynamically
+      ansible.builtin.include_role:
+        name: paloaltonetworks.panos_policy_automation.policy_creation
+      vars:
+        policy_creation_source_address_group: "{{ source_address_group }}"
+        policy_creation_destination_address_group: "{{ destination_address_group }}"
+        policy_creation_policy_match: "{{ policy_match }}"
+        application_group: "{{ outer_application_group }}"
+        policy_creation_device_group: "{{ device_group }}"
         action: 'allow'
         commit: false
