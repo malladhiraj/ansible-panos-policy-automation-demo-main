@@ -19,16 +19,11 @@
     # Because this is an example only, we just put all our policy files right here.
     - name: Match Web Server to Database Tier
       ansible.builtin.set_fact:
-        policy_match: true # Set the fact that we did match a policy
-        source_address_group: PRESET_WEB_TO_DATABASE_SOURCE # In this case, the policy preset is an address_group type
-        destination_address_group: PRESET_WEB_TO_DATABASE_DESTINATION # Destination addr group
-        outer_application_group: PRESET_WEB_TO_DATABASE # If an application is passed, we should also include it in the policy.
-        device_group: Lab # Finally, we set the device group!
-      when:
-        - policy_creation_source_ip is defined
-        - policy_creation_destination_ip is defined
-        - "policy_creation_source_ip.startswith('10.10.199')"
-        - "policy_creation_destination_ip.startswith('10.10.200')"
+        policy_match: true
+        source_address_group: "{{ 'PRESET_WEB_TO_DATABASE_SOURCE' if (policy_creation_source_ip is defined and policy_creation_destination_ip is defined and policy_creation_source_ip.startswith('10.10.199') and policy_creation_destination_ip.startswith('10.10.200')) else 'DEFAULT_SOURCE' }}"
+        destination_address_group: "{{ 'PRESET_WEB_TO_DATABASE_DESTINATION' if (policy_creation_source_ip is defined and policy_creation_destination_ip is defined and policy_creation_source_ip.startswith('10.10.199') and policy_creation_destination_ip.startswith('10.10.200')) else 'DEFAULT_DESTINATION' }}"
+        outer_application_group: "{{ 'PRESET_WEB_TO_DATABASE' if (policy_creation_source_ip is defined and policy_creation_destination_ip is defined and policy_creation_source_ip.startswith('10.10.199') and policy_creation_destination_ip.startswith('10.10.200')) else 'DEFAULT_APPLICATION' }}"
+        device_group: "{{ 'Lab' if (policy_creation_source_ip is defined and policy_creation_destination_ip is defined and policy_creation_source_ip.startswith('10.10.199') and policy_creation_destination_ip.startswith('10.10.200')) else 'DEFAULT_DEVICE_GROUP' }}"
 
     - name: Include a role dynamically
       ansible.builtin.include_role:
