@@ -17,7 +17,7 @@
     # In this example, when running under AAP we cannot load tasks directly from the filesystem, so in production
     #   you would have to pull your policy files using `fetch` or similar.
     # Because this is an example only, we just put all our policy files right here.
-    - name: 2Match Web Server to Database Tier
+    - name: Match Web Server to Database Tier
       ansible.builtin.set_fact:
         policy_match: true
         policy_name: "web-to-database-policy"
@@ -27,8 +27,8 @@
         device_group: "{{ 'Lab' if (policy_creation_source_ip is defined and policy_creation_destination_ip is defined and policy_creation_source_ip.startswith('10.10.199') and policy_creation_destination_ip.startswith('10.10.200')) else 'DEFAULT_DEVICE_GROUP' }}"
         policy_rules:
           - name: "{{ policy_name }}"
-            from: "any"
-            to: "any"
+            from: "trust"
+            to: "untrust"
             src: "{{ source_address_group }}"
             dst: "{{ destination_address_group }}"
             app:
@@ -47,6 +47,21 @@
         policy_creation_policy_match: "{{ policy_match }}"
         application_group: "{{ outer_application_group }}"
         policy_creation_device_group: "{{ device_group }}"
+        commit: false
+
+    - name: Create or update security rule
+      paloaltonetworks.panos.panos_security_rule:
+        provider: "{{ provider }}"
+        state: present
+        device_group: "{{ device_group }}"
+        rule_name: "{{ policy_name }}"
+        source_zone: ['any']
+        destination_zone: ['any']
+        source_address: ['{{ source_address_group }}']
+        destination_address: ['{{ destination_address_group }}']
+        application: ['{{ outer_application_group }}']
+        service: ['any']
+        action: 'allow'
         commit: false
 
     - name: Create or update security rule
