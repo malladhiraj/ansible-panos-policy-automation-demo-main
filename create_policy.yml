@@ -2,45 +2,55 @@
 - hosts: all
   connection: local
   gather_facts: true
-  name: Example Policy Creation Playbook
+  name: Panorama Policy Creation and Validation
 
   vars:
+    # Panorama provider
     provider:
       ip_address: "{{ ansible_host }}"
       username: "{{ lookup('env', 'ANSIBLE_NET_USERNAME') }}"
       password: "{{ lookup('env', 'ANSIBLE_NET_PASSWORD') }}"
 
-    policy_creation_policy_files: []
+    # Panorama scope (HARD SET)
+    panorama_device_group: Lab
+    panorama_rulebase: pre-rulebase
+
+    # Rule name (explicit and consistent everywhere)
+    policy_name: "Match Web Server to Database Tier"
+
+    # Test IPs used ONLY for lookup_policy simulation
+    # These MUST belong to the address groups below
+    test_source_ip: 10.10.199.10
+    test_destination_ip: 10.10.200.20
+
     default_new_policy_tag: AUTOMATED
+    policy_creation_policy_files: []
 
   tasks:
 
-    # Policy matching logic (unchanged)
-    - name: Match Web Server to Database Tier
+    # ------------------------------------------------------------
+    # Policy definition and matching logic
+    # ------------------------------------------------------------
+    - name: Define policy inputs
       ansible.builtin.set_fact:
         policy_match: true
-        policy_name: "Match Web Server to Database Tier"
+
         source_address_group: >-
           {{ 'PRESET_WEB_TO_DATABASE_SOURCE'
-             if (policy_creation_source_ip is defined and
-                 policy_creation_destination_ip is defined and
-                 policy_creation_source_ip.startswith('10.10.199') and
-                 policy_creation_destination_ip.startswith('10.10.200'))
+             if (test_source_ip.startswith('10.10.199'))
              else 'DEFAULT_SOURCE' }}
+
         destination_address_group: >-
           {{ 'PRESET_WEB_TO_DATABASE_DESTINATION'
-             if (policy_creation_source_ip is defined and
-                 policy_creation_destination_ip is defined and
-                 policy_creation_source_ip.startswith('10.10.199') and
-                 policy_creation_destination_ip.startswith('10.10.200'))
+             if (test_destination_ip.startswith('10.10.200'))
              else 'DEFAULT_DESTINATION' }}
+
         outer_application_group: >-
           {{ 'PRESET_WEB_TO_DATABASE'
-             if (policy_creation_source_ip is defined and
-                 policy_creation_destination_ip is defined and
-                 policy_creation_source_ip.startswith('10.10.199') and
-                 policy_creation_destination_ip.startswith('10.10.200'))
+             if (test_source_ip.startswith('10.10.199') and
+                 test_destination_ip.startswith('10.10.200'))
              else 'DEFAULT_APPLICATION' }}
+
         policy_rules:
           - name: "{{ policy_name }}"
             from: "any"
@@ -53,36 +63,48 @@
               - "any"
             action: "allow"
 
-    # Policy creation role (unchanged)
-    - name: Include a role dynamically
+    # ------------------------------------------------------------
+    # Policy automation role
+    # Includes lookup_policy with TEST IPs so allow-rule is matched
+    # ------------------------------------------------------------
+    - name: Run policy automation (lookup + optional creation)
       ansible.builtin.include_role:
         name: paloaltonetworks.panos_policy_automation.policy_creation
       vars:
         policy_creation_policies: "{{ policy_rules }}"
+        policy_creation_policy_match: "{{ policy_match }}"
+        policy_creation_device_group: "{{ panorama_device_group }}"
+        application_group: "{{ outer_application_group }}"
         policy_creation_source_address_group: "{{ source_address_group }}"
         policy_creation_destination_address_group: "{{ destination_address_group }}"
-        policy_creation_policy_match: "{{ policy_match }}"
-        application_group: "{{ outer_application_group }}"
-        policy_creation_device_group: "{{ device_group }}"
+
+        # ✅ These two lines FIX lookup_policy default-deny issue
+        policy_creation_source_ip: "{{ test_source_ip }}"
+        policy_creation_destination_ip: "{{ test_destination_ip }}"
+
         commit: false
 
-    # ✅ CORRECTED: Panorama device-group + rulebase aware rule existence check
-    - name: Check if "Match Web Server to Database Tier" rule exists in Panorama device group
+    # ------------------------------------------------------------
+    # ✅ CORRECT: Panorama rule existence check (object-style)
+    # ------------------------------------------------------------
+    - name: Check if security rule exists in Panorama Lab pre-rulebase
       paloaltonetworks.panos.panos_security_rule_facts:
         provider: "{{ provider }}"
-        device_group: "{{ device_group }}"
-        rulebase: pre-rulebase
+        device_group: "{{ panorama_device_group }}"
+        rulebase: "{{ panorama_rulebase }}"
         names:
-          - "Match Web Server to Database Tier"
+          - "{{ policy_name }}"
       register: security_rule_facts
 
-    # Rule creation logic (unchanged, now correctly gated)
-    - name: Create or update security rule
+    # ------------------------------------------------------------
+    # Create the rule ONLY if it does not already exist
+    # ------------------------------------------------------------
+    - name: Create security rule if missing
       paloaltonetworks.panos.panos_security_rule:
         provider: "{{ provider }}"
         state: present
-        device_group: "{{ device_group }}"
-        rulebase: pre-rulebase
+        device_group: "{{ panorama_device_group }}"
+        rulebase: "{{ panorama_rulebase }}"
         rule_name: "{{ policy_name }}"
         source_zone: ['any']
         destination_zone: ['any']
@@ -94,6 +116,15 @@
           - "{{ outer_application_group }}"
         service:
           - "any"
-        action: "allow"
+        action: allow
         commit: false
       when: security_rule_facts.matched_rules | length == 0
+
+    # ------------------------------------------------------------
+    # Optional visibility (highly recommended)
+    # ------------------------------------------------------------
+    - name: Show rule existence result
+      debug:
+        msg: >
+          Rule '{{ policy_name }}' exists in Panorama Lab pre-rules:
+          {{ security_rule_facts.matched_rules | length > 0 }}
