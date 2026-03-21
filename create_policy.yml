@@ -17,7 +17,7 @@
     # In this example, when running under AAP we cannot load tasks directly from the filesystem, so in production
     #   you would have to pull your policy files using `fetch` or similar.
     # Because this is an example only, we just put all our policy files right here.
-    - name: 22Match Web Server to Database Tier
+    - name: 2Match Web Server to Database Tier
       ansible.builtin.set_fact:
         policy_match: true
         policy_name: "web-to-database-policy"
