@@ -1,0 +1,74 @@
+---
+- hosts: all
+  connection: local
+  gather_facts: false
+  name: Create Firewall Rule in Panorama Lab Device Group
+
+  vars:
+    provider:
+      ip_address: "{{ ansible_host }}"
+      username: "{{ lookup('env', 'ANSIBLE_NET_USERNAME') }}"
+      password: "{{ lookup('env', 'ANSIBLE_NET_PASSWORD') }}"
+
+    # Panorama scope
+    device_group: Lab
+    rulebase: pre-rulebase
+
+    # Firewall rule definition
+    rule_name: "Allow Web to Database"
+    source_zones:
+      - any
+    destination_zones:
+      - any
+    source_addresses:
+      - PRESET_WEB_TO_DATABASE_SOURCE
+    destination_addresses:
+      - PRESET_WEB_TO_DATABASE_DESTINATION
+    applications:
+      - PRESET_WEB_TO_DATABASE
+    services:
+      - application-default
+    action: allow
+
+  tasks:
+
+    # ------------------------------------------------------------
+    # Check if the firewall rule already exists
+    # ------------------------------------------------------------
+    - name: Check if firewall rule exists in Panorama Lab pre-rules
+      paloaltonetworks.panos.panos_security_rule_facts:
+        provider: "{{ provider }}"
+        device_group: "{{ device_group }}"
+        rulebase: "{{ rulebase }}"
+        names:
+          - "{{ rule_name }}"
+      register: rule_facts
+
+    # ------------------------------------------------------------
+    # Create the firewall rule ONLY if missing
+    # ------------------------------------------------------------
+    - name: Create firewall rule in Panorama Lab pre-rules
+      paloaltonetworks.panos.panos_security_rule:
+        provider: "{{ provider }}"
+        state: present
+        device_group: "{{ device_group }}"
+        rulebase: "{{ rulebase }}"
+        rule_name: "{{ rule_name }}"
+        source_zone: "{{ source_zones }}"
+        destination_zone: "{{ destination_zones }}"
+        source_address: "{{ source_addresses }}"
+        destination_address: "{{ destination_addresses }}"
+        application: "{{ applications }}"
+        service: "{{ services }}"
+        action: "{{ action }}"
+        commit: false
+      when: rule_facts.matched_rules | length == 0
+
+    # ------------------------------------------------------------
+    # Visibility
+    # ------------------------------------------------------------
+    - name: Show rule creation result
+      debug:
+        msg: >
+          Firewall rule '{{ rule_name }}' exists in Panorama Lab pre-rules:
+          {{ rule_facts.matched_rules | length > 0 }}
