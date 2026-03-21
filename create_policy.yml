@@ -49,20 +49,12 @@
         policy_creation_device_group: "{{ device_group }}"
         commit: false
 
-    - name: Create or update security rule
-      paloaltonetworks.panos.panos_security_rule:
+    - name: Check if security rule exists
+      paloaltonetworks.panos.panos_security_rule_facts:
         provider: "{{ provider }}"
-        state: present
         device_group: "{{ device_group }}"
-        rule_name: "{{ policy_name }}"
-        source_zone: ['any']
-        destination_zone: ['any']
-        source_address: ['{{ source_address_group }}']
-        destination_address: ['{{ destination_address_group }}']
-        application: ['{{ outer_application_group }}']
-        service: ['any']
-        action: 'allow'
-        commit: false
+        names: ["{{ policy_name }}"]
+      register: security_rule_facts
 
     - name: Create or update security rule
       paloaltonetworks.panos.panos_security_rule:
@@ -78,3 +70,4 @@
         service: ['any']
         action: 'allow'
         commit: false
+      when: security_rule_facts.matched_rules | length == 0
