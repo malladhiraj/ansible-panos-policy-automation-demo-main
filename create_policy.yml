@@ -27,8 +27,8 @@
         device_group: "{{ 'Lab' if (policy_creation_source_ip is defined and policy_creation_destination_ip is defined and policy_creation_source_ip.startswith('10.10.199') and policy_creation_destination_ip.startswith('10.10.200')) else 'DEFAULT_DEVICE_GROUP' }}"
         policy_rules:
           - name: "{{ policy_name }}"
-            from: "trust"
-            to: "untrust"
+            from: "any"
+            to: "any"
             src: "{{ source_address_group }}"
             dst: "{{ destination_address_group }}"
             app:
