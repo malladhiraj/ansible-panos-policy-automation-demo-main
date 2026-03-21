@@ -20,7 +20,7 @@
     - name: Match Web Server to Database Tier
       ansible.builtin.set_fact:
         policy_match: true
-        policy_name: "web-to-database-policy"
+        policy_name: "{{ 'web-to-database-policy'}}"
         source_address_group: "{{ 'PRESET_WEB_TO_DATABASE_SOURCE' if (policy_creation_source_ip is defined and policy_creation_destination_ip is defined and policy_creation_source_ip.startswith('10.10.199') and policy_creation_destination_ip.startswith('10.10.200')) else 'DEFAULT_SOURCE' }}"
         destination_address_group: "{{ 'PRESET_WEB_TO_DATABASE_DESTINATION' if (policy_creation_source_ip is defined and policy_creation_destination_ip is defined and policy_creation_source_ip.startswith('10.10.199') and policy_creation_destination_ip.startswith('10.10.200')) else 'DEFAULT_DESTINATION' }}"
         outer_application_group: "{{ 'PRESET_WEB_TO_DATABASE' if (policy_creation_source_ip is defined and policy_creation_destination_ip is defined and policy_creation_source_ip.startswith('10.10.199') and policy_creation_destination_ip.startswith('10.10.200')) else 'DEFAULT_APPLICATION' }}"
