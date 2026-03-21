@@ -25,19 +25,26 @@
         destination_address_group: "{{ 'PRESET_WEB_TO_DATABASE_DESTINATION' if (policy_creation_source_ip is defined and policy_creation_destination_ip is defined and policy_creation_source_ip.startswith('10.10.199') and policy_creation_destination_ip.startswith('10.10.200')) else 'DEFAULT_DESTINATION' }}"
         outer_application_group: "{{ 'PRESET_WEB_TO_DATABASE' if (policy_creation_source_ip is defined and policy_creation_destination_ip is defined and policy_creation_source_ip.startswith('10.10.199') and policy_creation_destination_ip.startswith('10.10.200')) else 'DEFAULT_APPLICATION' }}"
         device_group: "{{ 'Lab' if (policy_creation_source_ip is defined and policy_creation_destination_ip is defined and policy_creation_source_ip.startswith('10.10.199') and policy_creation_destination_ip.startswith('10.10.200')) else 'DEFAULT_DEVICE_GROUP' }}"
+        policy_rules:
+          - name: "{{ policy_name }}"
+            from: "trust"
+            to: "untrust"
+            src: "{{ source_address_group }}"
+            dst: "{{ destination_address_group }}"
+            app:
+              - "{{ outer_application_group }}"
+            svc:
+              - "any"
+            action: "allow"
 
     - name: Include a role dynamically
       ansible.builtin.include_role:
         name: paloaltonetworks.panos_policy_automation.policy_creation
       vars:
-        policy_creation_policy_name: "{{ policy_name }}"
+        policy_creation_policies: "{{ policy_rules }}"
         policy_creation_source_address_group: "{{ source_address_group }}"
         policy_creation_destination_address_group: "{{ destination_address_group }}"
         policy_creation_policy_match: "{{ policy_match }}"
         application_group: "{{ outer_application_group }}"
         policy_creation_device_group: "{{ device_group }}"
-        source_zone: "trust"
-        destination_zone: "untrust"
-        action: 'allow'
-        service: 'any'
         commit: false
