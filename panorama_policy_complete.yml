@@ -132,7 +132,7 @@
         state: present
         device_group: "{{ panorama_device_group }}"
         name: "{{ source_group_name }}"
-        static_members:
+        static_value:
           - "{{ source_object_name }}"
         description: "Web to Database Source Group - Auto Created"
         tag:
@@ -160,7 +160,7 @@
         state: present
         device_group: "{{ panorama_device_group }}"
         name: "{{ destination_group_name }}"
-        static_members:
+        static_value:
           - "{{ destination_object_name }}"
         description: "Web to Database Destination Group - Auto Created"
         tag:
