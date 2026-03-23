@@ -1,3 +1,4 @@
 collections:
+  - paloaltonetworks.panos
   - paloaltonetworks.panos_policy_automation
   - ansible.utils

@@ -4,6 +4,12 @@
   gather_facts: true
   name: Complete Policy Creation - Objects, Groups, and Rules
 
+  pre_tasks:
+    - name: Install required collections
+      command: ansible-galaxy collection install paloaltonetworks.panos paloaltonetworks.panos_policy_automation ansible.utils
+      delegate_to: localhost
+      run_once: true
+
   vars:
     # Panorama provider
     provider:
