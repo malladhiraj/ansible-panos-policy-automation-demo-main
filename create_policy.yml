@@ -5,161 +5,37 @@
   name: Example Policy Creation Playbook
 
   vars:
-    # Panorama provider
     provider:
       ip_address: "{{ ansible_host }}"
       username: "{{ lookup('env', 'ANSIBLE_NET_USERNAME') }}"
       password: "{{ lookup('env', 'ANSIBLE_NET_PASSWORD') }}"
-
-    # Panorama scope (hard set)
-    panorama_device_group: Lab
-    panorama_rulebase: pre-rulebase
-
-    # Explicit rule name
-    policy_name: "Match Web Server to Database Tier"
-
-    # Test IPs used ONLY for lookup_policy simulation
-    # Must belong to the address groups below
-    test_source_ip: 10.10.199.10
-    test_destination_ip: 10.10.200.20
-
     policy_creation_policy_files: []
     default_new_policy_tag: AUTOMATED
 
   tasks:
 
-    # ------------------------------------------------------------
-    # Define policy inputs and presets
-    # IMPORTANT: policy_match = false (Option 1)
-    # ------------------------------------------------------------
+    # In this example, when running under AAP we cannot load tasks directly from the filesystem, so in production
+    #   you would have to pull your policy files using `fetch` or similar.
+    # Because this is an example only, we just put all our policy files right here.
     - name: Match Web Server to Database Tier
       ansible.builtin.set_fact:
-        policy_match: false   # ✅ OPTION 1: allow lookup + creation
+        policy_match: true # Set the fact that we did match a policy
+        source_address_group: PRESET_WEB_TO_DATABASE_SOURCE # In this case, the policy preset is an address_group type
+        destination_address_group: PRESET_WEB_TO_DATABASE_DESTINATION # Destination addr group
+        outer_application_group: PRESET_WEB_TO_DATABASE # If an application is passed, we should also include it in the policy.
+        device_group: Lab # Finally, we set the device group!
+      when:
+        - policy_creation_source_ip is defined
+        - policy_creation_destination_ip is defined
+        - "policy_creation_source_ip.startswith('10.10.199')"
+        - "policy_creation_destination_ip.startswith('10.10.200')"
 
-        source_address_group: >-
-          {{ 'PRESET_WEB_TO_DATABASE_SOURCE'
-             if (test_source_ip.startswith('10.10.199'))
-             else 'DEFAULT_SOURCE' }}
-
-        destination_address_group: >-
-          {{ 'PRESET_WEB_TO_DATABASE_DESTINATION'
-             if (test_destination_ip.startswith('10.10.200'))
-             else 'DEFAULT_DESTINATION' }}
-
-        outer_application_group: >-
-          {{ 'PRESET_WEB_TO_DATABASE'
-             if (test_source_ip.startswith('10.10.199')
-                 and test_destination_ip.startswith('10.10.200'))
-             else 'DEFAULT_APPLICATION' }}
-
-        policy_rules:
-          - name: "{{ policy_name }}"
-            from: "any"
-            to: "any"
-            src: "{{ source_address_group }}"
-            dst: "{{ destination_address_group }}"
-            app:
-              - "{{ outer_application_group }}"
-            svc:
-              - "any"
-            action: "allow"
-
-    - name: Debug - Show policy_rules structure
-      debug:
-        msg: "{{ policy_rules }}"
-
-    # ------------------------------------------------------------
-    # Policy automation role
-    # This will now:
-    #  - run lookup_policy
-    #  - resolve zones using test IPs
-    #  - create the rule if it does not exist
-    # ------------------------------------------------------------
-    - name: Include policy creation role
+    - name: Include a role dynamically
       ansible.builtin.include_role:
         name: paloaltonetworks.panos_policy_automation.policy_creation
       vars:
-        policy_creation_policies: "{{ policy_rules }}"
+        policy_creation_source_address_group: "{{ source_address_group }}"
+        policy_creation_destination_address_group: "{{ destination_address_group }}"
         policy_creation_policy_match: "{{ policy_match }}"
-        policy_creation_device_group: "{{ panorama_device_group }}"
-        policy_creation_source_ip: "{{ test_source_ip }}"
-        policy_creation_destination_ip: "{{ test_destination_ip }}"
-        commit: false
-
-    # ------------------------------------------------------------
-    # Explicit Panorama rule existence check (Lab / Pre-Rules)
-    # ------------------------------------------------------------
-    - name: Check if security rule exists in Panorama Lab pre-rulebase
-      paloaltonetworks.panos.panos_security_rule_facts:
-        provider: "{{ provider }}"
-        device_group: "{{ panorama_device_group }}"
-        rulebase: "{{ panorama_rulebase }}"
-        names:
-          - "{{ policy_name }}"
-      register: rule_facts
-
-    - name: Display existing rules check
-      debug:
-        msg: "Rule exists: {{ rule_facts.matched_rules | length > 0 }}, Count: {{ rule_facts.matched_rules | length }}"
-
-    # ------------------------------------------------------------
-    # Create the security rule if it does NOT exist
-    # ------------------------------------------------------------
-    - name: Create security rule in Panorama Lab pre-rulebase
-      paloaltonetworks.panos.panos_security_rule:
-        provider: "{{ provider }}"
-        state: present
-        device_group: "{{ panorama_device_group }}"
-        rulebase: "{{ panorama_rulebase }}"
-        rule_name: "{{ policy_name }}"
-        source_zone: "any"
-        destination_zone: "any"
-        source_address: "{{ source_address_group }}"
-        destination_address: "{{ destination_address_group }}"
-        application: "{{ outer_application_group }}"
-        service: "any"
-        action: "allow"
-        commit: false
-      when: rule_facts.matched_rules | length == 0
-      register: rule_creation_result
-
-    # Display result
-    - name: Show rule creation result
-      debug:
-        msg: >
-          Rule '{{ policy_name }}' creation status:
-          {{ 'Created' if rule_creation_result.changed else 'Already exists or skipped' }}
-      register: security_rule_facts
-
-    # ------------------------------------------------------------
-    # Safeguard: create rule if still missing
-    # ------------------------------------------------------------
-    - name: Create security rule if missing
-      paloaltonetworks.panos.panos_security_rule:
-        provider: "{{ provider }}"
-        state: present
-        device_group: "{{ panorama_device_group }}"
-        rulebase: "{{ panorama_rulebase }}"
-        rule_name: "{{ policy_name }}"
-        source_zone: ['any']
-        destination_zone: ['any']
-        source_address:
-          - "{{ source_address_group }}"
-        destination_address:
-          - "{{ destination_address_group }}"
-        application:
-          - "{{ outer_application_group }}"
-        service:
-          - "any"
-        action: allow
-        commit: false
-      when: security_rule_facts.matched_rules | length == 0
-
-    # ------------------------------------------------------------
-    # Visibility
-    # ------------------------------------------------------------
-    - name: Show final rule existence state
-      debug:
-        msg: >
-          Rule '{{ policy_name }}' exists in Panorama Lab pre-rules:
-          {{ security_rule_facts.matched_rules | length > 0 }}
+        application_group: "{{ outer_application_group }}"
+        policy_creation_device_group: "{{ device_group }}"
