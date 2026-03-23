@@ -72,7 +72,7 @@
         name: "{{ source_object_name }}"
         value: "{{ source_ip }}"
         description: "Web Tier Subnet - Auto Created"
-        tags:
+        tag:
           - "Automated"
         commit: false
       when: not source_object_exists
@@ -99,7 +99,7 @@
         name: "{{ destination_object_name }}"
         value: "{{ destination_ip }}"
         description: "Database Tier Subnet - Auto Created"
-        tags:
+        tag:
           - "Automated"
         commit: false
       when: not destination_object_exists
@@ -135,7 +135,7 @@
         static_members:
           - "{{ source_object_name }}"
         description: "Web to Database Source Group - Auto Created"
-        tags:
+        tag:
           - "Automated"
         commit: false
       when: not source_group_exists
@@ -163,7 +163,7 @@
         static_members:
           - "{{ destination_object_name }}"
         description: "Web to Database Destination Group - Auto Created"
-        tags:
+        tag:
           - "Automated"
         commit: false
       when: not destination_group_exists
@@ -200,7 +200,7 @@
           - "web-browsing"
           - "web-posting"
         description: "Web to Database Application Group - Auto Created"
-        tags:
+        tag:
           - "Automated"
         commit: false
       when: not application_group_exists
@@ -243,7 +243,7 @@
         service: "any"
         action: "allow"
         description: "Auto-created rule for Web to Database communication"
-        tags:
+        tag:
           - "Automated"
         commit: false
       when: not security_rule_exists
