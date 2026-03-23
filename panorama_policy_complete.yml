@@ -333,28 +333,28 @@
           ========================================
 
           +---------------------+------------------+--------------------------------------------------+
-          | COMPONENT           | STATUS          | DETAILS                                          |
+          | COMPONENT           | STATUS           | DETAILS                                          |
           +---------------------+------------------+--------------------------------------------------+
           {% for result in source_objects_created.results %}
           {% if result.changed %}
-          | Source Object       | CREATED         | {{ result.item.1 }} → {{ source_object_name }}_{{ result.item.0 }} |
+          | {{ ('Source Object ' + (result.item.0 | string)) | ljust(19) }} | {{ 'CREATED' | ljust(16) }} | {{ (result.item.1 + ' → ' + source_object_name + '_' + (result.item.0 | string)) | ljust(48) }} |
           {% endif %}
           {% endfor %}
           {% for result in destination_objects_created.results %}
           {% if result.changed %}
-          | Dest Object         | CREATED         | {{ result.item.1 }} → {{ destination_object_name }}_{{ result.item.0 }} |
+          | {{ ('Dest Object ' + (result.item.0 | string)) | ljust(19) }} | {{ 'CREATED' | ljust(16) }} | {{ (result.item.1 + ' → ' + destination_object_name + '_' + (result.item.0 | string)) | ljust(48) }} |
           {% endif %}
           {% endfor %}
-          | Source Group        | {{ 'CREATED' if source_group_created.changed else 'EXISTS' }} | {{ source_group_members | join(', ') }} ({{ source_group_members | length }} members) |
-          | Dest Group          | {{ 'CREATED' if destination_group_created.changed else 'EXISTS' }} | {{ destination_group_members | join(', ') }} ({{ destination_group_members | length }} members) |
-          | App Group           | {{ 'CREATED' if application_group_created.changed else 'EXISTS' }} | {{ application_group_name }} |
+          | {{ 'Source Group' | ljust(19) }} | {{ ('CREATED' if source_group_created.changed else 'EXISTS') | ljust(16) }} | {{ (source_group_members | join(', ') + ' (' + (source_group_members | length | string) + ' members)') | ljust(48) }} |
+          | {{ 'Dest Group' | ljust(19) }} | {{ ('CREATED' if destination_group_created.changed else 'EXISTS') | ljust(16) }} | {{ (destination_group_members | join(', ') + ' (' + (destination_group_members | length | string) + ' members)') | ljust(48) }} |
+          | {{ 'App Group' | ljust(19) }} | {{ ('CREATED' if application_group_created.changed else 'EXISTS') | ljust(16) }} | {{ application_group_name | ljust(48) }} |
           {% for result in security_rules_created.results %}
           {% if result.changed %}
-          | Security Rule       | CREATED         | {{ result.item.rule_name }} |
+          | {{ 'Security Rule' | ljust(19) }} | {{ 'CREATED' | ljust(16) }} | {{ result.item.rule_name | ljust(48) }} |
           {% endif %}
           {% endfor %}
-          | Panorama Commit     | {{ 'SUCCESS' if panorama_commit_result.changed else 'NO CHANGES' }} | Changes committed to Panorama |
-          | Device Group Push   | {{ 'SUCCESS' if device_group_push_result.changed else 'NO CHANGES' }} | Pushed to '{{ panorama_device_group }}' |
+          | {{ 'Panorama Commit' | ljust(19) }} | {{ ('SUCCESS' if panorama_commit_result.changed else 'NO CHANGES') | ljust(16) }} | {{ 'Changes committed to Panorama' | ljust(48) }} |
+          | {{ 'Device Group Push' | ljust(19) }} | {{ ('SUCCESS' if device_group_push_result.changed else 'NO CHANGES') | ljust(16) }} | {{ ('Pushed to \'' + panorama_device_group + '\'') | ljust(48) }} |
           +---------------------+------------------+--------------------------------------------------+
 
           VALIDATION RESULTS:
