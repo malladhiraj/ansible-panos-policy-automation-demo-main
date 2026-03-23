@@ -38,56 +38,44 @@
         gathered_filter: '*'
       register: all_address_objects
 
-    - name: Check if source address object exists
-      set_fact:
-        source_object_exists: "{{ all_address_objects.gathered | selectattr('name', 'equalto', source_object_name) | list | length > 0 }}"
-
-    - name: Create source address object if missing
+    - name: Create source address objects if missing
       paloaltonetworks.panos.panos_address_object:
         provider: "{{ provider }}"
         state: present
         device_group: "{{ panorama_device_group }}"
-        name: "{{ source_object_name }}"
-        value: "{{ source_ip }}"
-        description: "Web Tier Subnet - Auto Created"
+        name: "{{ source_object_name }}_{{ item.0 }}"
+        value: "{{ item.1 }}"
+        description: "Web Tier Subnet - Auto Created ({{ item.1 }})"
         tag:
           - "Automated"
         commit: false
-      when: not source_object_exists
-      register: source_object_created
+      loop: "{{ (source_ip if source_ip is string else source_ip) | list | enumerate }}"
+      register: source_objects_created
 
-    - name: Display source object creation status
+    - name: Display source objects creation status
       debug:
-        msg: >
-          Source object '{{ source_object_name }}': 
-          {{ 'Created' if source_object_created.changed else 'Already exists' }}
+        msg: "Source objects created: {{ source_objects_created.results | selectattr('changed', 'equalto', true) | map(attribute='item.1') | list }}"
 
     # ============================================================
     # STEP 2: Check and Create DESTINATION ADDRESS OBJECT
     # ============================================================
-    - name: Check if destination address object exists
-      set_fact:
-        destination_object_exists: "{{ all_address_objects.gathered | selectattr('name', 'equalto', destination_object_name) | list | length > 0 }}"
-
-    - name: Create destination address object if missing
+    - name: Create destination address objects if missing
       paloaltonetworks.panos.panos_address_object:
         provider: "{{ provider }}"
         state: present
         device_group: "{{ panorama_device_group }}"
-        name: "{{ destination_object_name }}"
-        value: "{{ destination_ip }}"
-        description: "Database Tier Subnet - Auto Created"
+        name: "{{ destination_object_name }}_{{ item.0 }}"
+        value: "{{ item.1 }}"
+        description: "Database Tier Subnet - Auto Created ({{ item.1 }})"
         tag:
           - "Automated"
         commit: false
-      when: not destination_object_exists
-      register: destination_object_created
+      loop: "{{ (destination_ip if destination_ip is string else destination_ip) | list | enumerate }}"
+      register: destination_objects_created
 
-    - name: Display destination object creation status
+    - name: Display destination objects creation status
       debug:
-        msg: >
-          Destination object '{{ destination_object_name }}': 
-          {{ 'Created' if destination_object_created.changed else 'Already exists' }}
+        msg: "Destination objects created: {{ destination_objects_created.results | selectattr('changed', 'equalto', true) | map(attribute='item.1') | list }}"
 
     # ============================================================
     # STEP 3: Check and Create SOURCE ADDRESS GROUP
@@ -110,8 +98,7 @@
         state: present
         device_group: "{{ panorama_device_group }}"
         name: "{{ source_group_name }}"
-        static_value:
-          - "{{ source_object_name }}"
+        static_value: "{{ range(source_ip | length) | map('string') | map('regex_replace', '^(.*)$', source_object_name ~ '_\\1') | list }}"
         description: "Web to Database Source Group - Auto Created"
         tag:
           - "Automated"
@@ -138,8 +125,7 @@
         state: present
         device_group: "{{ panorama_device_group }}"
         name: "{{ destination_group_name }}"
-        static_value:
-          - "{{ destination_object_name }}"
+        static_value: "{{ range(destination_ip | length) | map('string') | map('regex_replace', '^(.*)$', destination_object_name ~ '_\\1') | list }}"
         description: "Web to Database Destination Group - Auto Created"
         tag:
           - "Automated"
@@ -262,8 +248,8 @@
           ========================================
           POLICY CREATION & DEPLOYMENT SUMMARY
           ========================================
-          Source Object: {{ source_object_created.changed | default(false) }}
-          Destination Object: {{ destination_object_created.changed | default(false) }}
+          Source Objects: {{ source_objects_created.results | selectattr('changed', 'equalto', true) | list | length }} created
+          Destination Objects: {{ destination_objects_created.results | selectattr('changed', 'equalto', true) | list | length }} created
           Source Group: {{ source_group_created.changed | default(false) }}
           Destination Group: {{ destination_group_created.changed | default(false) }}
           Application Group: {{ application_group_created.changed | default(false) }}
