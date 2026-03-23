@@ -1,0 +1,245 @@
+---
+- hosts: all
+  connection: local
+  gather_facts: true
+  name: Complete Policy Creation - Objects, Groups, and Rules
+
+  vars:
+    # Panorama provider
+    provider:
+      ip_address: "{{ ansible_host }}"
+      username: "{{ lookup('env', 'ANSIBLE_NET_USERNAME') }}"
+      password: "{{ lookup('env', 'ANSIBLE_NET_PASSWORD') }}"
+
+    # Panorama scope
+    panorama_device_group: Lab
+    panorama_rulebase: pre-rulebase
+
+    # Policy naming
+    policy_name: "Match Web Server to Database Tier"
+    
+    # Source and Destination IPs for object creation
+    source_ip: "10.10.199.0/24"
+    destination_ip: "10.10.200.0/24"
+
+    # Object and Group names
+    source_object_name: "WEB_TIER_SUBNET"
+    destination_object_name: "DATABASE_TIER_SUBNET"
+    source_group_name: "PRESET_WEB_TO_DATABASE_SOURCE"
+    destination_group_name: "PRESET_WEB_TO_DATABASE_DESTINATION"
+    application_group_name: "PRESET_WEB_TO_DATABASE"
+
+  tasks:
+
+    # ============================================================
+    # STEP 1: Check and Create SOURCE ADDRESS OBJECT
+    # ============================================================
+    - name: Check if source address object exists
+      paloaltonetworks.panos.panos_address_object_facts:
+        provider: "{{ provider }}"
+        device_group: "{{ panorama_device_group }}"
+        names:
+          - "{{ source_object_name }}"
+      register: source_object_check
+
+    - name: Create source address object if missing
+      paloaltonetworks.panos.panos_address_object:
+        provider: "{{ provider }}"
+        state: present
+        device_group: "{{ panorama_device_group }}"
+        name: "{{ source_object_name }}"
+        value: "{{ source_ip }}"
+        description: "Web Tier Subnet - Auto Created"
+      when: source_object_check.matched_objects | length == 0
+      register: source_object_created
+
+    - name: Display source object creation status
+      debug:
+        msg: >
+          Source object '{{ source_object_name }}': 
+          {{ 'Created' if source_object_created.changed else 'Already exists' }}
+
+    # ============================================================
+    # STEP 2: Check and Create DESTINATION ADDRESS OBJECT
+    # ============================================================
+    - name: Check if destination address object exists
+      paloaltonetworks.panos.panos_address_object_facts:
+        provider: "{{ provider }}"
+        device_group: "{{ panorama_device_group }}"
+        names:
+          - "{{ destination_object_name }}"
+      register: destination_object_check
+
+    - name: Create destination address object if missing
+      paloaltonetworks.panos.panos_address_object:
+        provider: "{{ provider }}"
+        state: present
+        device_group: "{{ panorama_device_group }}"
+        name: "{{ destination_object_name }}"
+        value: "{{ destination_ip }}"
+        description: "Database Tier Subnet - Auto Created"
+      when: destination_object_check.matched_objects | length == 0
+      register: destination_object_created
+
+    - name: Display destination object creation status
+      debug:
+        msg: >
+          Destination object '{{ destination_object_name }}': 
+          {{ 'Created' if destination_object_created.changed else 'Already exists' }}
+
+    # ============================================================
+    # STEP 3: Check and Create SOURCE ADDRESS GROUP
+    # ============================================================
+    - name: Check if source address group exists
+      paloaltonetworks.panos.panos_address_group_facts:
+        provider: "{{ provider }}"
+        device_group: "{{ panorama_device_group }}"
+        names:
+          - "{{ source_group_name }}"
+      register: source_group_check
+
+    - name: Create source address group if missing
+      paloaltonetworks.panos.panos_address_group:
+        provider: "{{ provider }}"
+        state: present
+        device_group: "{{ panorama_device_group }}"
+        name: "{{ source_group_name }}"
+        static_members:
+          - "{{ source_object_name }}"
+        description: "Web to Database Source Group - Auto Created"
+      when: source_group_check.matched_groups | length == 0
+      register: source_group_created
+
+    - name: Display source group creation status
+      debug:
+        msg: >
+          Source group '{{ source_group_name }}': 
+          {{ 'Created' if source_group_created.changed else 'Already exists' }}
+
+    # ============================================================
+    # STEP 4: Check and Create DESTINATION ADDRESS GROUP
+    # ============================================================
+    - name: Check if destination address group exists
+      paloaltonetworks.panos.panos_address_group_facts:
+        provider: "{{ provider }}"
+        device_group: "{{ panorama_device_group }}"
+        names:
+          - "{{ destination_group_name }}"
+      register: destination_group_check
+
+    - name: Create destination address group if missing
+      paloaltonetworks.panos.panos_address_group:
+        provider: "{{ provider }}"
+        state: present
+        device_group: "{{ panorama_device_group }}"
+        name: "{{ destination_group_name }}"
+        static_members:
+          - "{{ destination_object_name }}"
+        description: "Web to Database Destination Group - Auto Created"
+      when: destination_group_check.matched_groups | length == 0
+      register: destination_group_created
+
+    - name: Display destination group creation status
+      debug:
+        msg: >
+          Destination group '{{ destination_group_name }}': 
+          {{ 'Created' if destination_group_created.changed else 'Already exists' }}
+
+    # ============================================================
+    # STEP 5: Check and Create APPLICATION GROUP
+    # ============================================================
+    - name: Check if application group exists
+      paloaltonetworks.panos.panos_application_group_facts:
+        provider: "{{ provider }}"
+        device_group: "{{ panorama_device_group }}"
+        names:
+          - "{{ application_group_name }}"
+      register: application_group_check
+
+    - name: Create application group if missing
+      paloaltonetworks.panos.panos_application_group:
+        provider: "{{ provider }}"
+        state: present
+        device_group: "{{ panorama_device_group }}"
+        name: "{{ application_group_name }}"
+        value:
+          - "web-browsing"
+          - "web-posting"
+        description: "Web to Database Application Group - Auto Created"
+      when: application_group_check.matched_groups | length == 0
+      register: application_group_created
+
+    - name: Display application group creation status
+      debug:
+        msg: >
+          Application group '{{ application_group_name }}': 
+          {{ 'Created' if application_group_created.changed else 'Already exists' }}
+
+    # ============================================================
+    # STEP 6: Check and Create SECURITY RULE
+    # ============================================================
+    - name: Check if security rule exists
+      paloaltonetworks.panos.panos_security_rule_facts:
+        provider: "{{ provider }}"
+        device_group: "{{ panorama_device_group }}"
+        rulebase: "{{ panorama_rulebase }}"
+        names:
+          - "{{ policy_name }}"
+      register: security_rule_check
+
+    - name: Create security rule if missing
+      paloaltonetworks.panos.panos_security_rule:
+        provider: "{{ provider }}"
+        state: present
+        device_group: "{{ panorama_device_group }}"
+        rulebase: "{{ panorama_rulebase }}"
+        rule_name: "{{ policy_name }}"
+        source_zone: "any"
+        destination_zone: "any"
+        source_address: "{{ source_group_name }}"
+        destination_address: "{{ destination_group_name }}"
+        application: "{{ application_group_name }}"
+        service: "any"
+        action: "allow"
+        description: "Auto-created rule for Web to Database communication"
+      when: security_rule_check.matched_rules | length == 0
+      register: security_rule_created
+
+    - name: Display security rule creation status
+      debug:
+        msg: >
+          Security rule '{{ policy_name }}': 
+          {{ 'Created' if security_rule_created.changed else 'Already exists' }}
+
+    # ============================================================
+    # STEP 7: COMMIT CHANGES TO PANORAMA
+    # ============================================================
+    - name: Commit changes to Panorama
+      paloaltonetworks.panos.panos_commit_panorama:
+        provider: "{{ provider }}"
+        device_group: "{{ panorama_device_group }}"
+      register: commit_result
+
+    - name: Display commit status
+      debug:
+        msg: >
+          Panorama commit: 
+          {{ 'Success' if commit_result.stdout_lines[0] == '1' else 'No changes or failed' }}
+
+    # ============================================================
+    # SUMMARY
+    # ============================================================
+    - name: Policy Creation Summary
+      debug:
+        msg: |
+          ========================================
+          POLICY CREATION SUMMARY
+          ========================================
+          Source Object: {{ source_object_created.changed | default(false) }}
+          Destination Object: {{ destination_object_created.changed | default(false) }}
+          Source Group: {{ source_group_created.changed | default(false) }}
+          Destination Group: {{ destination_group_created.changed | default(false) }}
+          Application Group: {{ application_group_created.changed | default(false) }}
+          Security Rule: {{ security_rule_created.changed | default(false) }}
+          Commit Status: Success
+          ========================================
