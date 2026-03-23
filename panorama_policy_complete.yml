@@ -331,13 +331,58 @@
           ========================================
           POLICY CREATION & DEPLOYMENT SUMMARY
           ========================================
-          Source Objects: {{ source_objects_created.results | selectattr('changed', 'equalto', true) | list | length }} created
-          Destination Objects: {{ destination_objects_created.results | selectattr('changed', 'equalto', true) | list | length }} created
-          Source Group: {{ source_group_created.changed | default(false) }}
-          Destination Group: {{ destination_group_created.changed | default(false) }}
-          Application Group: {{ application_group_created.changed | default(false) }}
-          Security Rules: {{ security_rules_created.results | selectattr('changed', 'equalto', true) | list | length }} created
+
+          OBJECT CREATION:
+          ---------------
+          Source Objects Created: {{ source_objects_created.results | selectattr('changed', 'equalto', true) | list | length }}
+            {% for result in source_objects_created.results %}
+            {% if result.changed %}- {{ result.item.1 }} → {{ source_object_name }}_{{ result.item.0 }} (SUCCESS)
+            {% endif %}
+            {% endfor %}
+
+          Destination Objects Created: {{ destination_objects_created.results | selectattr('changed', 'equalto', true) | list | length }}
+            {% for result in destination_objects_created.results %}
+            {% if result.changed %}- {{ result.item.1 }} → {{ destination_object_name }}_{{ result.item.0 }} (SUCCESS)
+            {% endif %}
+            {% endfor %}
+
+          GROUP CREATION/UPDATES:
+          ----------------------
+          Source Group '{{ source_group_name }}':
+            Status: {{ 'CREATED' if source_group_created.changed else 'ALREADY EXISTS/UPDATED' }}
+            Members: {{ source_group_members | join(', ') }}
+            Expected: {{ expected_source_group_members | join(', ') }}
+            Match: {{ source_group_members == expected_source_group_members }}
+
+          Destination Group '{{ destination_group_name }}':
+            Status: {{ 'CREATED' if destination_group_created.changed else 'ALREADY EXISTS/UPDATED' }}
+            Members: {{ destination_group_members | join(', ') }}
+            Expected: {{ expected_destination_group_members | join(', ') }}
+            Match: {{ destination_group_members == expected_destination_group_members }}
+
+          APPLICATION GROUP:
+          -----------------
+          Application Group '{{ application_group_name }}':
+            Status: {{ 'CREATED' if application_group_created.changed else 'ALREADY EXISTS' }}
+
+          SECURITY RULES:
+          --------------
+          Rules Created: {{ security_rules_created.results | selectattr('changed', 'equalto', true) | list | length }}
+            {% for result in security_rules_created.results %}
+            {% if result.changed %}- {{ result.item.rule_name }} (SUCCESS)
+            {% endif %}
+            {% endfor %}
+
+          DEPLOYMENT STATUS:
+          -----------------
+          Panorama Commit: {{ 'SUCCESS' if panorama_commit_result.changed else 'NO CHANGES TO COMMIT' }}
+          Device Group Push: {{ 'SUCCESS' if device_group_push_result.changed else 'NO CHANGES TO PUSH' }}
+
+          VALIDATION RESULTS:
+          ------------------
+          All Objects Present: {{ (expected_source_objects + expected_destination_objects) | intersect(actual_source_objects + actual_destination_objects) | length == (expected_source_objects + expected_destination_objects) | length }}
+          Groups Properly Configured: {{ (source_group_members == expected_source_group_members) and (destination_group_members == expected_destination_group_members) }}
+
           ========================================
-          Panorama Commit: {{ panorama_commit_result.changed | default(false) }}
-          Device Group Push: {{ device_group_push_result.changed | default(false) }}
+          OVERALL STATUS: {{ 'SUCCESS - All components created/updated successfully' if panorama_commit_result.changed else 'PARTIAL - Some components may already exist' }}
           ========================================
