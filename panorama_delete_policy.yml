@@ -1,0 +1,198 @@
+---
+- hosts: all
+  connection: local
+  gather_facts: true
+  name: Panorama Policy Deletion - Remove Objects, Groups, and Rules
+
+  vars_files:
+    - panorama_delete_vars.yml
+
+  tasks:
+
+    # ============================================================
+    # STEP 1: REMOVE OBJECTS FROM ADDRESS GROUPS
+    # ============================================================
+    - name: Gather all address groups
+      paloaltonetworks.panos.panos_address_group:
+        provider: "{{ provider }}"
+        device_group: "{{ panorama_device_group }}"
+        state: gathered
+        gathered_filter: '*'
+      register: all_address_groups
+      when: remove_from_groups | length > 0
+
+    - name: Update address groups - remove specific objects
+      paloaltonetworks.panos.panos_address_group:
+        provider: "{{ provider }}"
+        state: present
+        device_group: "{{ panorama_device_group }}"
+        name: "{{ item.group_name }}"
+        static_value: "{{ (all_address_groups.gathered | selectattr('name', 'equalto', item.group_name) | first).static_value | difference(item.objects_to_remove) | list }}"
+        commit: false
+      loop: "{{ remove_from_groups }}"
+      when: remove_from_groups | length > 0
+      register: groups_updated
+
+    - name: Display updated address groups status
+      debug:
+        msg: "Updated groups: {{ groups_updated.results | map(attribute='item.group_name') | list }}"
+      when: remove_from_groups | length > 0
+
+    # ============================================================
+    # STEP 2: REMOVE APPLICATIONS FROM APPLICATION GROUPS
+    # ============================================================
+    - name: Gather all application groups
+      paloaltonetworks.panos.panos_application_group:
+        provider: "{{ provider }}"
+        device_group: "{{ panorama_device_group }}"
+        state: gathered
+        gathered_filter: '*'
+      register: all_app_groups
+      when: remove_from_app_groups | length > 0
+
+    - name: Update application groups - remove specific applications
+      paloaltonetworks.panos.panos_application_group:
+        provider: "{{ provider }}"
+        state: present
+        device_group: "{{ panorama_device_group }}"
+        name: "{{ item.group_name }}"
+        value: "{{ (all_app_groups.gathered | selectattr('name', 'equalto', item.group_name) | first).value | difference(item.apps_to_remove) | list }}"
+        commit: false
+      loop: "{{ remove_from_app_groups }}"
+      when: remove_from_app_groups | length > 0
+      register: app_groups_updated
+
+    - name: Display updated application groups status
+      debug:
+        msg: "Updated application groups: {{ app_groups_updated.results | map(attribute='item.group_name') | list }}"
+      when: remove_from_app_groups | length > 0
+
+    # ============================================================
+    # STEP 3: DELETE ADDRESS OBJECTS
+    # ============================================================
+    - name: Delete address objects
+      paloaltonetworks.panos.panos_address_object:
+        provider: "{{ provider }}"
+        state: absent
+        device_group: "{{ panorama_device_group }}"
+        name: "{{ item }}"
+        commit: false
+      loop: "{{ delete_address_objects }}"
+      when: delete_address_objects | length > 0
+      register: objects_deleted
+
+    - name: Display deleted address objects
+      debug:
+        msg: "Deleted address objects: {{ delete_address_objects }}"
+      when: delete_address_objects | length > 0
+
+    # ============================================================
+    # STEP 4: DELETE APPLICATION GROUPS
+    # ============================================================
+    - name: Delete application groups
+      paloaltonetworks.panos.panos_application_group:
+        provider: "{{ provider }}"
+        state: absent
+        device_group: "{{ panorama_device_group }}"
+        name: "{{ item }}"
+        commit: false
+      loop: "{{ delete_application_groups }}"
+      when: delete_application_groups | length > 0
+      register: app_groups_deleted
+
+    - name: Display deleted application groups
+      debug:
+        msg: "Deleted application groups: {{ delete_application_groups }}"
+      when: delete_application_groups | length > 0
+
+    # ============================================================
+    # STEP 5: DISABLE SECURITY RULES
+    # ============================================================
+    - name: Disable security rules
+      paloaltonetworks.panos.panos_security_rule:
+        provider: "{{ provider }}"
+        state: present
+        device_group: "{{ panorama_device_group }}"
+        rulebase: "{{ panorama_rulebase }}"
+        rule_name: "{{ item }}"
+        disabled: true
+        commit: false
+      loop: "{{ disable_rules }}"
+      when: disable_rules | length > 0
+      register: rules_disabled
+
+    - name: Display disabled security rules
+      debug:
+        msg: "Disabled security rules: {{ disable_rules }}"
+      when: disable_rules | length > 0
+
+    # ============================================================
+    # STEP 6: DELETE SECURITY RULES
+    # ============================================================
+    - name: Delete security rules
+      paloaltonetworks.panos.panos_security_rule:
+        provider: "{{ provider }}"
+        state: absent
+        device_group: "{{ panorama_device_group }}"
+        rulebase: "{{ panorama_rulebase }}"
+        rule_name: "{{ item }}"
+        commit: false
+      loop: "{{ delete_rules }}"
+      when: delete_rules | length > 0
+      register: rules_deleted
+
+    - name: Display deleted security rules
+      debug:
+        msg: "Deleted security rules: {{ delete_rules }}"
+      when: delete_rules | length > 0
+
+    # ============================================================
+    # STEP 7: COMMIT CHANGES TO PANORAMA
+    # ============================================================
+    - name: Commit changes to Panorama
+      paloaltonetworks.panos.panos_commit_panorama:
+        provider: "{{ provider }}"
+        description: "Deleted policy objects and rules"
+      register: panorama_commit_result
+
+    - name: Display Panorama commit status
+      debug:
+        msg: >
+          Panorama commit: 
+          {{ 'Success' if panorama_commit_result.changed else 'No changes to commit' }}
+
+    # ============================================================
+    # STEP 8: PUSH CHANGES TO DEVICE GROUP
+    # ============================================================
+    - name: Push changes to device group
+      paloaltonetworks.panos.panos_commit_push:
+        provider: "{{ provider }}"
+        style: "device group"
+        name: "{{ panorama_device_group }}"
+      register: device_group_push_result
+
+    - name: Display device group push status
+      debug:
+        msg: >
+          Device group '{{ panorama_device_group }}' push: 
+          {{ 'Success' if device_group_push_result.changed else 'No changes to push' }}
+
+    # ============================================================
+    # SUMMARY
+    # ============================================================
+    - name: Policy Deletion Summary
+      debug:
+        msg: |
+          ========================================
+          POLICY DELETION & CLEANUP SUMMARY
+          ========================================
+          Groups Updated: {{ groups_updated.results | length if groups_updated.results is defined else 0 }}
+          App Groups Updated: {{ app_groups_updated.results | length if app_groups_updated.results is defined else 0 }}
+          Address Objects Deleted: {{ objects_deleted.results | length if objects_deleted.results is defined else 0 }}
+          Application Groups Deleted: {{ app_groups_deleted.results | length if app_groups_deleted.results is defined else 0 }}
+          Rules Disabled: {{ rules_disabled.results | length if rules_disabled.results is defined else 0 }}
+          Rules Deleted: {{ rules_deleted.results | length if rules_deleted.results is defined else 0 }}
+          ========================================
+          Panorama Commit: {{ panorama_commit_result.changed | default(false) }}
+          Device Group Push: {{ device_group_push_result.changed | default(false) }}
+          ========================================

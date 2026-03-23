@@ -1,0 +1,69 @@
+# Panorama Policy Deletion Variables
+# This file contains items to be deleted or modified for removal from the Panorama policy automation.
+
+# Panorama provider
+provider:
+  ip_address: "{{ ansible_host }}"
+  username: "{{ lookup('env', 'ANSIBLE_NET_USERNAME') }}"
+  password: "{{ lookup('env', 'ANSIBLE_NET_PASSWORD') }}"
+
+# Panorama scope
+panorama_device_group: Lab
+panorama_rulebase: pre-rulebase
+
+# ====================================================================
+# 1. REMOVE OBJECTS FROM OBJECT GROUPS
+# ====================================================================
+# Specify groups and objects to remove from them
+# The group will be updated to exclude these objects
+remove_from_groups:
+  - group_name: "PRESET_WEB_TO_DATABASE_SOURCE"
+    objects_to_remove:
+      - "WEB_TIER_SUBNET_1"  # Remove this object from the group
+  - group_name: "PRESET_WEB_TO_DATABASE_DESTINATION"
+    objects_to_remove:
+      - "DATABASE_TIER_SUBNET_0"  # Remove this object from the group
+
+# ====================================================================
+# 2. REMOVE APPLICATIONS FROM APPLICATION GROUPS
+# ====================================================================
+# Specify groups and applications to remove from them
+remove_from_app_groups:
+  - group_name: "PRESET_WEB_TO_DATABASE"
+    apps_to_remove:
+      - "web-browsing"  # Remove this app from the group
+  # - group_name: "ANOTHER_APP_GROUP"
+  #   apps_to_remove:
+  #     - "ssl"
+
+# ====================================================================
+# 3. DELETE ADDRESS OBJECTS
+# ====================================================================
+# List of address objects to delete entirely
+delete_address_objects:
+  - "WEB_TIER_SUBNET_1"
+  # - "DATABASE_TIER_SUBNET_0"
+
+# ====================================================================
+# 4. DELETE APPLICATION GROUPS
+# ====================================================================
+# List of application groups to delete entirely
+delete_application_groups:
+  - "EXTRA_APP_GROUP"  # Example
+  # - "PRESET_WEB_TO_DATABASE"
+
+# ====================================================================
+# 5. DISABLE SECURITY RULES
+# ====================================================================
+# List of rules to disable (not delete, just change state to disabled)
+disable_rules:
+  - "Deny All"  # Rule to disable
+  # - "Another Rule Name"
+
+# ====================================================================
+# 6. DELETE SECURITY RULES
+# ====================================================================
+# List of rules to delete entirely
+delete_rules:
+  - "Deny All"  # Rule to delete
+  # - "Match Web Server to Database Tier"
