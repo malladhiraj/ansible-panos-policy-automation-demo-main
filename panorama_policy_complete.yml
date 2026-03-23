@@ -32,6 +32,24 @@
   tasks:
 
     # ============================================================
+    # STEP 0: Ensure the "Automated" tag exists in Panorama
+    # ============================================================
+    - name: Create "Automated" tag if it doesn't exist
+      paloaltonetworks.panos.panos_tag_object:
+        provider: "{{ provider }}"
+        device_group: "{{ panorama_device_group }}"
+        name: "Automated"
+        color: "Blue"
+        commit: false
+      register: tag_created
+
+    - name: Display tag creation status
+      debug:
+        msg: >
+          Tag 'Automated': 
+          {{ 'Created' if tag_created.changed else 'Already exists or skipped' }}
+
+    # ============================================================
     # STEP 1: Check and Create SOURCE ADDRESS OBJECT
     # ============================================================
     - name: Gather all address objects
@@ -54,7 +72,8 @@
         name: "{{ source_object_name }}"
         value: "{{ source_ip }}"
         description: "Web Tier Subnet - Auto Created"
-        tag: "Automated"
+        tags:
+          - "Automated"
         commit: false
       when: not source_object_exists
       register: source_object_created
@@ -80,7 +99,8 @@
         name: "{{ destination_object_name }}"
         value: "{{ destination_ip }}"
         description: "Database Tier Subnet - Auto Created"
-        tag: "Automated"
+        tags:
+          - "Automated"
         commit: false
       when: not destination_object_exists
       register: destination_object_created
@@ -115,7 +135,8 @@
         static_members:
           - "{{ source_object_name }}"
         description: "Web to Database Source Group - Auto Created"
-        tag: "Automated"
+        tags:
+          - "Automated"
         commit: false
       when: not source_group_exists
       register: source_group_created
@@ -142,7 +163,8 @@
         static_members:
           - "{{ destination_object_name }}"
         description: "Web to Database Destination Group - Auto Created"
-        tag: "Automated"
+        tags:
+          - "Automated"
         commit: false
       when: not destination_group_exists
       register: destination_group_created
@@ -178,7 +200,8 @@
           - "web-browsing"
           - "web-posting"
         description: "Web to Database Application Group - Auto Created"
-        tag: "Automated"
+        tags:
+          - "Automated"
         commit: false
       when: not application_group_exists
       register: application_group_created
@@ -220,7 +243,8 @@
         service: "any"
         action: "allow"
         description: "Auto-created rule for Web to Database communication"
-        tag: "Automated"
+        tags:
+          - "Automated"
         commit: false
       when: not security_rule_exists
       register: security_rule_created
