@@ -243,8 +243,7 @@
         service: "any"
         action: "allow"
         description: "Auto-created rule for Web to Database communication"
-        tag:
-          - "Automated"
+        tag_name: "Automated"
         commit: false
       when: not security_rule_exists
       register: security_rule_created
