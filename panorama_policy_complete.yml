@@ -198,8 +198,6 @@
         name: "{{ application_group_name }}"
         value:
           - "web-browsing"
-        tag:
-          - "Automated"
       when: not application_group_exists
       register: application_group_created
 
