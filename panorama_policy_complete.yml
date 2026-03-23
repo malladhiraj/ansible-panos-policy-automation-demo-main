@@ -39,7 +39,7 @@
         provider: "{{ provider }}"
         device_group: "{{ panorama_device_group }}"
         name: "Automated"
-        color: "Blue"
+        color: "blue"
         commit: false
       register: tag_created
 
