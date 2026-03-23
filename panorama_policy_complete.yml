@@ -39,6 +39,7 @@
         provider: "{{ provider }}"
         device_group: "{{ panorama_device_group }}"
         state: gathered
+        gathered_filter: '*'
       register: all_address_objects
 
     - name: Check if source address object exists
@@ -94,6 +95,7 @@
         provider: "{{ provider }}"
         device_group: "{{ panorama_device_group }}"
         state: gathered
+        gathered_filter: '*'
       register: all_address_groups
 
     - name: Check if source address group exists
@@ -151,6 +153,7 @@
         provider: "{{ provider }}"
         device_group: "{{ panorama_device_group }}"
         state: gathered
+        gathered_filter: '*'
       register: all_application_groups
 
     - name: Check if application group exists
@@ -185,6 +188,7 @@
         device_group: "{{ panorama_device_group }}"
         rulebase: "{{ panorama_rulebase }}"
         state: gathered
+        gathered_filter: '*'
       register: all_security_rules
 
     - name: Check if security rule exists
