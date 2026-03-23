@@ -12,7 +12,7 @@ panorama_device_group: Lab
 panorama_rulebase: pre-rulebase
 
 # Source and Destination IPs for object creation
-source_ip: ["10.10.199.0/24", "10.10.198.0/24"]
+source_ip: "10.10.199.0/24"
 destination_ip: "10.10.200.0/24"
 
 # Object and Group names
