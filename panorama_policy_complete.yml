@@ -199,10 +199,8 @@
         value:
           - "web-browsing"
           - "web-posting"
-        description: "Web to Database Application Group - Auto Created"
         tag:
           - "Automated"
-        commit: false
       when: not application_group_exists
       register: application_group_created
 
