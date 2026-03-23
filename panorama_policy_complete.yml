@@ -4,12 +4,6 @@
   gather_facts: true
   name: Complete Policy Creation - Objects, Groups, and Rules
 
-  pre_tasks:
-    - name: Install required collections
-      command: ansible-galaxy collection install paloaltonetworks.panos paloaltonetworks.panos_policy_automation ansible.utils
-      delegate_to: localhost
-      run_once: true
-
   vars:
     # Panorama provider
     provider:
@@ -41,11 +35,11 @@
     # STEP 1: Check and Create SOURCE ADDRESS OBJECT
     # ============================================================
     - name: Check if source address object exists
-      paloaltonetworks.panos.panos_address_object_facts:
+      paloaltonetworks.panos.panos_address_object:
         provider: "{{ provider }}"
         device_group: "{{ panorama_device_group }}"
-        names:
-          - "{{ source_object_name }}"
+        state: gathered
+        name: "{{ source_object_name }}"
       register: source_object_check
 
     - name: Create source address object if missing
@@ -56,7 +50,7 @@
         name: "{{ source_object_name }}"
         value: "{{ source_ip }}"
         description: "Web Tier Subnet - Auto Created"
-      when: source_object_check.matched_objects | length == 0
+      when: source_object_check.gathered | length == 0
       register: source_object_created
 
     - name: Display source object creation status
@@ -69,11 +63,11 @@
     # STEP 2: Check and Create DESTINATION ADDRESS OBJECT
     # ============================================================
     - name: Check if destination address object exists
-      paloaltonetworks.panos.panos_address_object_facts:
+      paloaltonetworks.panos.panos_address_object:
         provider: "{{ provider }}"
         device_group: "{{ panorama_device_group }}"
-        names:
-          - "{{ destination_object_name }}"
+        state: gathered
+        name: "{{ destination_object_name }}"
       register: destination_object_check
 
     - name: Create destination address object if missing
@@ -84,7 +78,7 @@
         name: "{{ destination_object_name }}"
         value: "{{ destination_ip }}"
         description: "Database Tier Subnet - Auto Created"
-      when: destination_object_check.matched_objects | length == 0
+      when: destination_object_check.gathered | length == 0
       register: destination_object_created
 
     - name: Display destination object creation status
@@ -97,11 +91,11 @@
     # STEP 3: Check and Create SOURCE ADDRESS GROUP
     # ============================================================
     - name: Check if source address group exists
-      paloaltonetworks.panos.panos_address_group_facts:
+      paloaltonetworks.panos.panos_address_group:
         provider: "{{ provider }}"
         device_group: "{{ panorama_device_group }}"
-        names:
-          - "{{ source_group_name }}"
+        state: gathered
+        name: "{{ source_group_name }}"
       register: source_group_check
 
     - name: Create source address group if missing
@@ -113,7 +107,7 @@
         static_members:
           - "{{ source_object_name }}"
         description: "Web to Database Source Group - Auto Created"
-      when: source_group_check.matched_groups | length == 0
+      when: source_group_check.gathered | length == 0
       register: source_group_created
 
     - name: Display source group creation status
@@ -126,11 +120,11 @@
     # STEP 4: Check and Create DESTINATION ADDRESS GROUP
     # ============================================================
     - name: Check if destination address group exists
-      paloaltonetworks.panos.panos_address_group_facts:
+      paloaltonetworks.panos.panos_address_group:
         provider: "{{ provider }}"
         device_group: "{{ panorama_device_group }}"
-        names:
-          - "{{ destination_group_name }}"
+        state: gathered
+        name: "{{ destination_group_name }}"
       register: destination_group_check
 
     - name: Create destination address group if missing
@@ -142,7 +136,7 @@
         static_members:
           - "{{ destination_object_name }}"
         description: "Web to Database Destination Group - Auto Created"
-      when: destination_group_check.matched_groups | length == 0
+      when: destination_group_check.gathered | length == 0
       register: destination_group_created
 
     - name: Display destination group creation status
@@ -155,11 +149,11 @@
     # STEP 5: Check and Create APPLICATION GROUP
     # ============================================================
     - name: Check if application group exists
-      paloaltonetworks.panos.panos_application_group_facts:
+      paloaltonetworks.panos.panos_application_group:
         provider: "{{ provider }}"
         device_group: "{{ panorama_device_group }}"
-        names:
-          - "{{ application_group_name }}"
+        state: gathered
+        name: "{{ application_group_name }}"
       register: application_group_check
 
     - name: Create application group if missing
@@ -172,7 +166,7 @@
           - "web-browsing"
           - "web-posting"
         description: "Web to Database Application Group - Auto Created"
-      when: application_group_check.matched_groups | length == 0
+      when: application_group_check.gathered | length == 0
       register: application_group_created
 
     - name: Display application group creation status
@@ -185,12 +179,12 @@
     # STEP 6: Check and Create SECURITY RULE
     # ============================================================
     - name: Check if security rule exists
-      paloaltonetworks.panos.panos_security_rule_facts:
+      paloaltonetworks.panos.panos_security_rule:
         provider: "{{ provider }}"
         device_group: "{{ panorama_device_group }}"
         rulebase: "{{ panorama_rulebase }}"
-        names:
-          - "{{ policy_name }}"
+        state: gathered
+        name: "{{ policy_name }}"
       register: security_rule_check
 
     - name: Create security rule if missing
@@ -208,7 +202,7 @@
         service: "any"
         action: "allow"
         description: "Auto-created rule for Web to Database communication"
-      when: security_rule_check.matched_rules | length == 0
+      when: security_rule_check.gathered | length == 0
       register: security_rule_created
 
     - name: Display security rule creation status
