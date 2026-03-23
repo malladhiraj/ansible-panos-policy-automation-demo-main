@@ -80,13 +80,20 @@
         policy_creation_device_group: "{{ panorama_device_group }}"
         policy_creation_source_address_group: "{{ source_address_group }}"
         policy_creation_destination_address_group: "{{ destination_address_group }}"
-        application_group: "{{ outer_application_group }}"
+        policy_creation_application_group: "{{ outer_application_group }}"
 
         # ✅ These enable lookup_policy to hit the allow rule
         policy_creation_source_ip: "{{ test_source_ip }}"
         policy_creation_destination_ip: "{{ test_destination_ip }}"
 
         commit: false
+      register: policy_creation_result
+
+    # Debug: Show role output
+    - name: Display policy creation role result
+      debug:
+        var: policy_creation_result
+        verbosity: 1
 
     # ------------------------------------------------------------
     # Explicit Panorama rule existence check (Lab / Pre-Rules)
@@ -98,6 +105,35 @@
         rulebase: "{{ panorama_rulebase }}"
         names:
           - "{{ policy_name }}"
+      register: rule_facts
+
+    # ------------------------------------------------------------
+    # Create the security rule if it does NOT exist
+    # ------------------------------------------------------------
+    - name: Create security rule in Panorama Lab pre-rulebase
+      paloaltonetworks.panos.panos_security_rule:
+        provider: "{{ provider }}"
+        state: present
+        device_group: "{{ panorama_device_group }}"
+        rulebase: "{{ panorama_rulebase }}"
+        rule_name: "{{ policy_name }}"
+        source_zone: "any"
+        destination_zone: "any"
+        source_address: "{{ source_address_group }}"
+        destination_address: "{{ destination_address_group }}"
+        application: "{{ outer_application_group }}"
+        service: "any"
+        action: "allow"
+        commit: false
+      when: rule_facts.matched_rules | length == 0
+      register: rule_creation_result
+
+    # Display result
+    - name: Show rule creation result
+      debug:
+        msg: >
+          Rule '{{ policy_name }}' creation status:
+          {{ 'Created' if rule_creation_result.changed else 'Already exists or skipped' }}
       register: security_rule_facts
 
     # ------------------------------------------------------------
