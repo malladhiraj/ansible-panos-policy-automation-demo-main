@@ -43,18 +43,18 @@
         provider: "{{ provider }}"
         state: present
         device_group: "{{ panorama_device_group }}"
-        name: "{{ source_object_name }}_{{ item.0 }}"
-        value: "{{ item.1 }}"
-        description: "Web Tier Subnet - Auto Created ({{ item.1 }})"
+        name: "{{ source_object_name }}_{{ item }}"
+        value: "{{ (source_ip if source_ip is not string else [source_ip])[item] }}"
+        description: "Web Tier Subnet - Auto Created ({{ (source_ip if source_ip is not string else [source_ip])[item] }})"
         tag:
           - "Automated"
         commit: false
-      loop: "{{ (source_ip if source_ip is string else source_ip) | list | enumerate }}"
+      loop: "{{ range((source_ip if source_ip is not string else [source_ip]) | length) | list }}"
       register: source_objects_created
 
     - name: Display source objects creation status
       debug:
-        msg: "Source objects created: {{ source_objects_created.results | selectattr('changed', 'equalto', true) | map(attribute='item.1') | list }}"
+        msg: "Source objects created: {{ source_objects_created.results | selectattr('changed', 'equalto', true) | map(attribute='item') | list }}"
 
     # ============================================================
     # STEP 2: Check and Create DESTINATION ADDRESS OBJECT
@@ -64,18 +64,18 @@
         provider: "{{ provider }}"
         state: present
         device_group: "{{ panorama_device_group }}"
-        name: "{{ destination_object_name }}_{{ item.0 }}"
-        value: "{{ item.1 }}"
-        description: "Database Tier Subnet - Auto Created ({{ item.1 }})"
+        name: "{{ destination_object_name }}_{{ item }}"
+        value: "{{ (destination_ip if destination_ip is not string else [destination_ip])[item] }}"
+        description: "Database Tier Subnet - Auto Created ({{ (destination_ip if destination_ip is not string else [destination_ip])[item] }})"
         tag:
           - "Automated"
         commit: false
-      loop: "{{ (destination_ip if destination_ip is string else destination_ip) | list | enumerate }}"
+      loop: "{{ range((destination_ip if destination_ip is not string else [destination_ip]) | length) | list }}"
       register: destination_objects_created
 
     - name: Display destination objects creation status
       debug:
-        msg: "Destination objects created: {{ destination_objects_created.results | selectattr('changed', 'equalto', true) | map(attribute='item.1') | list }}"
+        msg: "Destination objects created: {{ destination_objects_created.results | selectattr('changed', 'equalto', true) | map(attribute='item') | list }}"
 
     # ============================================================
     # STEP 3: Check and Create SOURCE ADDRESS GROUP
@@ -98,7 +98,7 @@
         state: present
         device_group: "{{ panorama_device_group }}"
         name: "{{ source_group_name }}"
-        static_value: "{{ range(source_ip | length) | map('string') | map('regex_replace', '^(.*)$', source_object_name ~ '_\\1') | list }}"
+        static_value: "{{ range((source_ip if source_ip is not string else [source_ip]) | length) | map('string') | map('regex_replace', '^(.*)$', source_object_name ~ '_\\1') | list }}"
         description: "Web to Database Source Group - Auto Created"
         tag:
           - "Automated"
@@ -125,7 +125,7 @@
         state: present
         device_group: "{{ panorama_device_group }}"
         name: "{{ destination_group_name }}"
-        static_value: "{{ range(destination_ip | length) | map('string') | map('regex_replace', '^(.*)$', destination_object_name ~ '_\\1') | list }}"
+        static_value: "{{ range((destination_ip if destination_ip is not string else [destination_ip]) | length) | map('string') | map('regex_replace', '^(.*)$', destination_object_name ~ '_\\1') | list }}"
         description: "Web to Database Destination Group - Auto Created"
         tag:
           - "Automated"
