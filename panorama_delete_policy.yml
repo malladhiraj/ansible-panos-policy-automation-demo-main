@@ -57,7 +57,6 @@
         device_group: "{{ panorama_device_group }}"
         name: "{{ item.group_name }}"
         value: "{{ (all_app_groups.gathered | selectattr('name', 'equalto', item.group_name) | first).value | difference(item.apps_to_remove) | list }}"
-        commit: false
       loop: "{{ remove_from_app_groups }}"
       when: remove_from_app_groups | length > 0
       register: app_groups_updated
