@@ -136,8 +136,88 @@
     - name: Display destination group creation status
       debug:
         msg: >
-          Destination group '{{ destination_group_name }}': 
+          Destination group '{{ destination_group_name }}':
           {{ 'Created' if destination_group_created.changed else 'Already exists' }}
+
+    # ============================================================
+    # STEP 4.5: VALIDATE OBJECTS AND GROUPS
+    # ============================================================
+    - name: Gather all address objects (for validation)
+      paloaltonetworks.panos.panos_address_object:
+        provider: "{{ provider }}"
+        device_group: "{{ panorama_device_group }}"
+        state: gathered
+        gathered_filter: '*'
+      register: all_address_objects_validation
+
+    - name: Gather all address groups (for validation)
+      paloaltonetworks.panos.panos_address_group:
+        provider: "{{ provider }}"
+        device_group: "{{ panorama_device_group }}"
+        state: gathered
+        gathered_filter: '*'
+      register: all_address_groups_validation
+
+    - name: Validate source objects exist
+      set_fact:
+        expected_source_objects: "{{ range((source_ip if source_ip is not string else [source_ip]) | length) | map('string') | map('regex_replace', '^(.*)$', source_object_name ~ '_\\\\1') | list }}"
+        actual_source_objects: "{{ all_address_objects_validation.gathered | map(attribute='name') | list }}"
+
+    - name: Validate destination objects exist
+      set_fact:
+        expected_destination_objects: "{{ range((destination_ip if destination_ip is not string else [destination_ip]) | length) | map('string') | map('regex_replace', '^(.*)$', destination_object_name ~ '_\\\\1') | list }}"
+        actual_destination_objects: "{{ all_address_objects_validation.gathered | map(attribute='name') | list }}"
+
+    - name: Check source group membership
+      set_fact:
+        source_group_members: "{{ (all_address_groups_validation.gathered | selectattr('name', 'equalto', source_group_name) | first).static_value | default([]) }}"
+        expected_source_group_members: "{{ expected_source_objects }}"
+
+    - name: Check destination group membership
+      set_fact:
+        destination_group_members: "{{ (all_address_groups_validation.gathered | selectattr('name', 'equalto', destination_group_name) | first).static_value | default([]) }}"
+        expected_destination_group_members: "{{ expected_destination_objects }}"
+
+    - name: Report validation results
+      debug:
+        msg: |
+          ========================================
+          OBJECT AND GROUP VALIDATION REPORT
+          ========================================
+          SOURCE OBJECTS:
+          Expected: {{ expected_source_objects }}
+          Found: {{ expected_source_objects | intersect(actual_source_objects) }}
+          Missing: {{ expected_source_objects | difference(actual_source_objects) }}
+
+          DESTINATION OBJECTS:
+          Expected: {{ expected_destination_objects }}
+          Found: {{ expected_destination_objects | intersect(actual_destination_objects) }}
+          Missing: {{ expected_destination_objects | difference(actual_destination_objects) }}
+
+          SOURCE GROUP '{{ source_group_name }}':
+          Expected members: {{ expected_source_group_members }}
+          Actual members: {{ source_group_members }}
+          Missing from group: {{ expected_source_group_members | difference(source_group_members) }}
+          Extra in group: {{ source_group_members | difference(expected_source_group_members) }}
+          Status: {{ 'EMPTY GROUP!' if source_group_members | length == 0 else 'OK' }}
+
+          DESTINATION GROUP '{{ destination_group_name }}':
+          Expected members: {{ expected_destination_group_members }}
+          Actual members: {{ destination_group_members }}
+          Missing from group: {{ expected_destination_group_members | difference(destination_group_members) }}
+          Extra in group: {{ destination_group_members | difference(expected_destination_group_members) }}
+          Status: {{ 'EMPTY GROUP!' if destination_group_members | length == 0 else 'OK' }}
+          ========================================
+
+    - name: Warn if groups are empty
+      debug:
+        msg: "WARNING: '{{ source_group_name }}' is empty! Check object creation and group assignment."
+      when: source_group_members | length == 0
+
+    - name: Warn if destination group is empty
+      debug:
+        msg: "WARNING: '{{ destination_group_name }}' is empty! Check object creation and group assignment."
+      when: destination_group_members | length == 0
 
     # ============================================================
     # STEP 5: Check and Create APPLICATION GROUP
