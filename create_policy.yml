@@ -64,6 +64,10 @@
               - "any"
             action: "allow"
 
+    - name: Debug - Show policy_rules structure
+      debug:
+        msg: "{{ policy_rules }}"
+
     # ------------------------------------------------------------
     # Policy automation role
     # This will now:
@@ -78,22 +82,9 @@
         policy_creation_policies: "{{ policy_rules }}"
         policy_creation_policy_match: "{{ policy_match }}"
         policy_creation_device_group: "{{ panorama_device_group }}"
-        policy_creation_source_address_group: "{{ source_address_group }}"
-        policy_creation_destination_address_group: "{{ destination_address_group }}"
-        policy_creation_application_group: "{{ outer_application_group }}"
-
-        # ✅ These enable lookup_policy to hit the allow rule
         policy_creation_source_ip: "{{ test_source_ip }}"
         policy_creation_destination_ip: "{{ test_destination_ip }}"
-
         commit: false
-      register: policy_creation_result
-
-    # Debug: Show role output
-    - name: Display policy creation role result
-      debug:
-        var: policy_creation_result
-        verbosity: 1
 
     # ------------------------------------------------------------
     # Explicit Panorama rule existence check (Lab / Pre-Rules)
@@ -106,6 +97,10 @@
         names:
           - "{{ policy_name }}"
       register: rule_facts
+
+    - name: Display existing rules check
+      debug:
+        msg: "Rule exists: {{ rule_facts.matched_rules | length > 0 }}, Count: {{ rule_facts.matched_rules | length }}"
 
     # ------------------------------------------------------------
     # Create the security rule if it does NOT exist
