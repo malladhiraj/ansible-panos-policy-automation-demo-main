@@ -198,7 +198,6 @@
         name: "{{ application_group_name }}"
         value:
           - "web-browsing"
-          - "web-posting"
         tag:
           - "Automated"
       when: not application_group_exists
