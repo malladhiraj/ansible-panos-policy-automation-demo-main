@@ -1,0 +1,47 @@
+# Panorama Policy Variables
+# This file contains all configurable variables for the Panorama policy automation playbook.
+
+# Panorama provider
+provider:
+  ip_address: "{{ ansible_host }}"
+  username: "{{ lookup('env', 'ANSIBLE_NET_USERNAME') }}"
+  password: "{{ lookup('env', 'ANSIBLE_NET_PASSWORD') }}"
+
+# Panorama scope
+panorama_device_group: Lab
+panorama_rulebase: pre-rulebase
+
+# Source and Destination IPs for object creation
+source_ip: "10.10.199.0/24"
+destination_ip: "10.10.200.0/24"
+
+# Object and Group names
+source_object_name: "WEB_TIER_SUBNET"
+destination_object_name: "DATABASE_TIER_SUBNET"
+source_group_name: "PRESET_WEB_TO_DATABASE_SOURCE"
+destination_group_name: "PRESET_WEB_TO_DATABASE_DESTINATION"
+application_group_name: "PRESET_WEB_TO_DATABASE"
+
+# Security Rules (list of rule dictionaries)
+rules:
+  - rule_name: "Match Web Server to Database Tier"
+    source_zone: "any"
+    destination_zone: "any"
+    source_ip: "{{ source_group_name }}"
+    destination_ip: "{{ destination_group_name }}"
+    application: "{{ application_group_name }}"
+    service: "any"
+    action: "allow"
+    description: "Auto-created rule for Web to Database communication"
+    tag_name: "Automated"
+  # Add more rules below as needed, e.g.:
+  # - rule_name: "Another Rule"
+  #   source_zone: "trust"
+  #   destination_zone: "untrust"
+  #   source_ip: "any"
+  #   destination_ip: "any"
+  #   application: "ssl"
+  #   service: "any"
+  #   action: "allow"
+  #   description: "Another auto-created rule"
+  #   tag_name: "Automated"
