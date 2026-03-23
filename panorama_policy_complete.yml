@@ -255,13 +255,44 @@
           {{ 'Created' if security_rule_created.changed else 'Already exists' }}
 
     # ============================================================
+    # STEP 7: COMMIT CHANGES TO PANORAMA
+    # ============================================================
+    - name: Commit changes to Panorama
+      paloaltonetworks.panos.panos_commit_panorama:
+        provider: "{{ provider }}"
+        description: "Auto-created policy objects and rules"
+      register: panorama_commit_result
+
+    - name: Display Panorama commit status
+      debug:
+        msg: >
+          Panorama commit: 
+          {{ 'Success' if panorama_commit_result.changed else 'No changes to commit' }}
+
+    # ============================================================
+    # STEP 8: PUSH CHANGES TO DEVICE GROUP
+    # ============================================================
+    - name: Push changes to device group
+      paloaltonetworks.panos.panos_commit_push:
+        provider: "{{ provider }}"
+        style: "device group"
+        name: "{{ panorama_device_group }}"
+      register: device_group_push_result
+
+    - name: Display device group push status
+      debug:
+        msg: >
+          Device group '{{ panorama_device_group }}' push: 
+          {{ 'Success' if device_group_push_result.changed else 'No changes to push' }}
+
+    # ============================================================
     # SUMMARY
     # ============================================================
     - name: Policy Creation Summary
       debug:
         msg: |
           ========================================
-          POLICY CREATION SUMMARY
+          POLICY CREATION & DEPLOYMENT SUMMARY
           ========================================
           Source Object: {{ source_object_created.changed | default(false) }}
           Destination Object: {{ destination_object_created.changed | default(false) }}
@@ -270,5 +301,6 @@
           Application Group: {{ application_group_created.changed | default(false) }}
           Security Rule: {{ security_rule_created.changed | default(false) }}
           ========================================
-          NOTE: Changes are staged but not committed.
-          Run manual commit when ready.
+          Panorama Commit: {{ panorama_commit_result.changed | default(false) }}
+          Device Group Push: {{ device_group_push_result.changed | default(false) }}
+          ========================================
