@@ -54,6 +54,7 @@
         name: "{{ source_object_name }}"
         value: "{{ source_ip }}"
         description: "Web Tier Subnet - Auto Created"
+        commit: false
       when: not source_object_exists
       register: source_object_created
 
@@ -78,6 +79,7 @@
         name: "{{ destination_object_name }}"
         value: "{{ destination_ip }}"
         description: "Database Tier Subnet - Auto Created"
+        commit: false
       when: not destination_object_exists
       register: destination_object_created
 
@@ -111,6 +113,7 @@
         static_members:
           - "{{ source_object_name }}"
         description: "Web to Database Source Group - Auto Created"
+        commit: false
       when: not source_group_exists
       register: source_group_created
 
@@ -136,6 +139,7 @@
         static_members:
           - "{{ destination_object_name }}"
         description: "Web to Database Destination Group - Auto Created"
+        commit: false
       when: not destination_group_exists
       register: destination_group_created
 
@@ -170,6 +174,7 @@
           - "web-browsing"
           - "web-posting"
         description: "Web to Database Application Group - Auto Created"
+        commit: false
       when: not application_group_exists
       register: application_group_created
 
@@ -210,6 +215,7 @@
         service: "any"
         action: "allow"
         description: "Auto-created rule for Web to Database communication"
+        commit: false
       when: not security_rule_exists
       register: security_rule_created
 
@@ -218,21 +224,6 @@
         msg: >
           Security rule '{{ policy_name }}': 
           {{ 'Created' if security_rule_created.changed else 'Already exists' }}
-
-    # ============================================================
-    # STEP 7: COMMIT CHANGES TO PANORAMA
-    # ============================================================
-    - name: Commit changes to Panorama
-      paloaltonetworks.panos.panos_commit_panorama:
-        provider: "{{ provider }}"
-        device_group: "{{ panorama_device_group }}"
-      register: commit_result
-
-    - name: Display commit status
-      debug:
-        msg: >
-          Panorama commit: 
-          {{ 'Success' if commit_result.stdout_lines[0] == '1' else 'No changes or failed' }}
 
     # ============================================================
     # SUMMARY
@@ -249,5 +240,6 @@
           Destination Group: {{ destination_group_created.changed | default(false) }}
           Application Group: {{ application_group_created.changed | default(false) }}
           Security Rule: {{ security_rule_created.changed | default(false) }}
-          Commit Status: Success
           ========================================
+          NOTE: Changes are staged but not committed.
+          Run manual commit when ready.
