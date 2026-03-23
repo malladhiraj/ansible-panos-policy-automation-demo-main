@@ -103,7 +103,7 @@
         tag:
           - "Automated"
         commit: false
-      when: not source_group_exists
+
       register: source_group_created
 
     - name: Display source group creation status
@@ -130,9 +130,12 @@
         tag:
           - "Automated"
         commit: false
-      when: not destination_group_exists
-      register: destination_group_created
 
+      register: destination_group_created
+    - name: Debug destination group static_value
+      debug:
+        msg: "Destination group '{{ destination_group_name }}' static_value set to: {{ range((destination_ip if destination_ip is not string else [destination_ip]) | length) | map('string') | map('regex_replace', '^(.*)$', destination_object_name ~ '_\\\\1') | list }}"
+      when: not destination_group_exists
     - name: Display destination group creation status
       debug:
         msg: >
