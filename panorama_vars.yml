@@ -45,7 +45,7 @@ rules:
     action: "allow"
     description: "Panorama allow all rule"
     tag_name: "Automated"
-  # Add more rules below as needed, e.g.:
+  # Add more rules below as needed
   - rule_name: "Deny All"
     source_zone: "any"
     destination_zone: "any"
