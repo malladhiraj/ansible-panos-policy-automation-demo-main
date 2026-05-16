@@ -34,17 +34,6 @@ rules:
     action: "allow"
     description: "Auto-created rule for Web to Database communication"
     tag_name: "Automated"
-  # Add more rules below as need
-  - rule_name: "Allow All"
-    source_zone: "any"
-    destination_zone: "any"
-    source_ip: "any"
-    destination_ip: "any"
-    application: "any"
-    service: "any"
-    action: "allow"
-    description: "Panorama allow all rule"
-    tag_name: "Automated"
   # Add more rules below as needed
   - rule_name: "Deny All"
     source_zone: "any"
